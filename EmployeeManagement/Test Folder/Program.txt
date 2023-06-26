@@ -1,0 +1,144 @@
+﻿using EmployeeManagement.Models;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NLog.Extensions.Logging;
+
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        CreateHostBuilder(args).Build().Run();
+    }
+
+    public static IHostBuilder CreateHostBuilder(string[] args) =>
+        Host.CreateDefaultBuilder(args)
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder.UseStartup<Startup>();
+            })
+            .ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.SetMinimumLevel(LogLevel.Information);
+                logging.AddConsole();
+            });
+}
+
+public class Startup
+{
+    public IConfiguration Configuration { get; }
+
+    public Startup(IConfiguration configuration)
+    {
+        Configuration = configuration;
+    }
+
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddLogging(loggingBuilder =>
+        {
+            loggingBuilder.ClearProviders();
+            loggingBuilder.AddConfiguration(Configuration.GetSection("Logging"));
+            loggingBuilder.AddNLog();
+        });
+
+        services.AddDbContextPool<AppDbContext>(options =>
+            options.UseSqlServer(Configuration.GetConnectionString("EmployeeDBConnection")));
+
+        services.AddMvc().AddXmlSerializerFormatters();
+        services.AddRazorPages();
+        services.AddScoped<IEmployeeRepository, SQLEmployeeRepository>();
+    }
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (!env.IsDevelopment())
+        {
+            app.UseExceptionHandler("/Home/Error");
+        }
+        else
+        {
+            app.UseExceptionHandler("/Error");
+            app.UseStatusCodePagesWithReExecute("/Error/{0}");
+        }
+
+        app.UseStaticFiles();
+
+        app.UseRouting();
+
+        app.UseAuthorization();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllerRoute(
+                name: "default",
+                pattern: "{controller=Home}/{action=Index}/{id?}");
+
+            endpoints.MapRazorPages();
+        });
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+New method for program class
+
+using EmployeeManagement.Models;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.SqlServer;
+using NLog.Extensions.Logging;
+
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddLogging(loggingBuilder =>
+{
+    loggingBuilder.ClearProviders();
+    loggingBuilder.AddConfiguration(Configuration.GetSection("Logging"));
+    loggingBuilder.AddNLog();
+});
+
+// Add services to the container.
+builder.Services.AddDbContextPool<AppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("EmployeeDBConnection")));
+builder.Services.AddMvc().AddXmlSerializerFormatters();
+builder.Services.AddRazorPages();
+builder.Services.AddScoped<IEmployeeRepository, SQLEmployeeRepository>();
+
+
+
+
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+else
+{
+    app.UseExceptionHandler("/Error");
+    app.UseStatusCodePagesWithReExecute("/Error/{0}");
+}
+
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.MapRazorPages();
+
+app.Run();
+
